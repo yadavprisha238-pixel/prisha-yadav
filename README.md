@@ -1,3 +1,3 @@
 # prisha-yadav
-This is my first repository
+This Is My First Git Repository.
 Author - Prisha yadav
