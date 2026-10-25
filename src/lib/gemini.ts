@@ -145,14 +145,18 @@ export function formatGeminiError(err: any): { error: string; message: string; s
 export async function generateContentWithFallback(
   gemini: GoogleGenerativeAI,
   promptOrPayload: any,
-  preferredModel: string = GEMINI_MODEL
+  preferredModel: string = GEMINI_MODEL,
+  modelOptions?: { systemInstruction?: string }
 ) {
   const modelsToTry = Array.from(new Set([preferredModel, ...FALLBACK_GEMINI_MODELS]));
   let lastError: any = null;
 
   for (const modelName of modelsToTry) {
     try {
-      const model = gemini.getGenerativeModel({ model: modelName });
+      const model = gemini.getGenerativeModel({
+        model: modelName,
+        systemInstruction: modelOptions?.systemInstruction,
+      });
       const result = await model.generateContent(promptOrPayload);
       return result;
     } catch (err: any) {

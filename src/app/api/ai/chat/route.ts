@@ -58,40 +58,44 @@ Drop all academic jargon completely. Explain it like the student is 10 years old
     : ""
 }`;
 
-    // Format chat history for Gemini
-    const contents: any[] = [
-      {
-        role: "user",
-        parts: [{ text: `System Instructions for the AI Tutor:\n${systemPrompt}\nLanguage mode: ${language}` }],
-      },
-      {
-        role: "model",
-        parts: [{ text: "Got it! I am ready to teach with clarity, relatable analogies, and encouragement in " + language + "." }],
-      },
-    ];
+    // Format chat history for Gemini with valid alternating roles
+    const contents: any[] = [];
 
-    // Append up to last 8 messages for context
+    // Append up to last 8 messages for context ensuring proper alternation
     const recentHistory = history.slice(-8);
     for (const msg of recentHistory) {
-      contents.push({
-        role: msg.sender === "user" ? "user" : "model",
-        parts: [{ text: msg.content }],
-      });
+      const role = msg.sender === "user" ? "user" : "model";
+      // Avoid duplicate consecutive roles
+      if (contents.length > 0 && contents[contents.length - 1].role === role) {
+        contents[contents.length - 1].parts[0].text += `\n${msg.content}`;
+      } else {
+        contents.push({
+          role,
+          parts: [{ text: msg.content }],
+        });
+      }
     }
 
     // Add current user prompt
-    contents.push({
-      role: "user",
-      parts: [
-        {
-          text: isStudentStuck
-            ? `Student is confused: "${message}". Please simplify the explanation with an intuitive everyday analogy and encourage them!`
-            : message,
-        },
-      ],
-    });
+    const currentText = isStudentStuck
+      ? `Student is confused: "${message}". Please simplify the explanation with an intuitive everyday analogy and encourage them!`
+      : message;
 
-    const result = await generateContentWithFallback(gemini, { contents });
+    if (contents.length > 0 && contents[contents.length - 1].role === "user") {
+      contents[contents.length - 1].parts[0].text += `\n${currentText}`;
+    } else {
+      contents.push({
+        role: "user",
+        parts: [{ text: currentText }],
+      });
+    }
+
+    const result = await generateContentWithFallback(
+      gemini,
+      { contents },
+      GEMINI_MODEL,
+      { systemInstruction: systemPrompt }
+    );
     const replyText = result.response.text();
 
     return NextResponse.json({
